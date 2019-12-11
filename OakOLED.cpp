@@ -49,6 +49,10 @@ void OakOLED::drawPixel(int16_t x, int16_t y, uint16_t c) {
   }
 }
 
+void OakOLED::invertDisplay(bool i)
+{
+	sendcommand(0b10100110 | i);
+}
 
 void OakOLED::display() {
   sendcommand(SSD1306_COLUMNADDR);
@@ -77,6 +81,60 @@ void OakOLED::begin() {
   init_OLED();
   resetDisplay();
   clearDisplay();
+}
+
+void OakOLED::ScrollSetupX(bool direct = 0, unsigned char ps = 0b00000000, unsigned char pe  = 0b00000111, unsigned char ss = 0b00000000) {
+	sendcommand(0b00100110 | direct);
+	sendcommand(0b00000000);
+	sendcommand(ps);
+	sendcommand(ss);
+	sendcommand(pe);
+	sendcommand(0b00000000);
+	sendcommand(0b11111111);
+}
+
+void OakOLED::ScrollSetupXY(bool direct1 = 0, bool direct2 = 0, unsigned char ps = 0b00000000, unsigned char pe  = 0b00000111, unsigned char ss = 0b00000000, unsigned char ee = 0b00000000) {
+	sendcommand((0b00101000 | direct1) | direct2 << 1);
+	sendcommand(0b00000000);
+	sendcommand(ps);
+	sendcommand(ss);
+	sendcommand(pe);
+	sendcommand(0b00000000);
+	sendcommand(ee);
+}
+
+void OakOLED::ScrollAc(bool state = true)
+{
+	sendcommand(0b00101110 | state);
+}
+
+void OakOLED::Contrast(unsigned char contr) {
+  sendcommand(0x81);   
+  sendcommand(contr);  //0-255 
+} 
+
+void OakOLED::Phase(unsigned char ph1, unsigned char ph2) {
+  sendcommand(0xD9);   
+  sendcommand((ph1 << 4) | ph2);   //1-15
+}
+
+void OakOLED::Clock(unsigned char clock, unsigned char delim) {
+  sendcommand(0xD5);   
+  sendcommand(delim | (clock << 4));
+}
+
+void OakOLED::Vcom(unsigned char contr) {
+  sendcommand(0xDB);   
+  sendcommand(contr << 4);   
+}
+
+void OakOLED::OffsetY(char offset) {
+  sendcommand(0xD3);   
+  sendcommand(offset);   
+}
+
+void OakOLED::Mirror(bool st) {
+	sendcommand(0b10100000 | st);
 }
 
 //==========================================================//

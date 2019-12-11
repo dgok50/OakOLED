@@ -51,6 +51,8 @@ class OakOLED : public Adafruit_GFX {
 
   OakOLED();
   virtual void drawPixel(int16_t, int16_t, uint16_t);
+  virtual void invertDisplay(bool);
+
   void display();
 
   void begin();
@@ -62,13 +64,30 @@ class OakOLED : public Adafruit_GFX {
   void displayOff(void);
 
   void clearDisplay(void);
+  
+  void Contrast(unsigned char);
+  
+  void Phase(unsigned char, unsigned char);
 
+  void Clock(unsigned char, unsigned char);
+
+  void Vcom(unsigned char);
+
+  void OffsetY(char);
+
+  void Mirror(bool);
+  
+  void ScrollSetupX(bool, unsigned char, unsigned char, unsigned char);
+  
+  void ScrollSetupXY(bool, bool, unsigned char, unsigned char, unsigned char, unsigned char);
+
+  void ScrollAc(bool);
+  
   void sendcommand(unsigned char com);
 
   uint8_t buffer[OLED_BUFFER_SIZE];
 
   private:
-
 
   //==========================================================//
   // Inits oled and draws logo at startup
