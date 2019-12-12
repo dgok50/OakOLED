@@ -39,6 +39,9 @@ OakOLED::OakOLED()
 }
 
 void OakOLED::drawPixel(int16_t x, int16_t y, uint16_t c) {
+#ifdef NO_BUFF
+
+#else
   uint16_t idx = x + (y / 8) * OLED_WIDTH;
   uint8_t bit = y % 8;
 
@@ -47,6 +50,57 @@ void OakOLED::drawPixel(int16_t x, int16_t y, uint16_t c) {
   } else {
     buffer[idx] &= ~(1 << bit);
   }
+#endif
+}
+
+void OakOLED::SetMemMode(unsigned char mode) {
+  sendcommand(0b00100000);   
+  sendcommand(mode);   
+} 
+
+void OakOLED::SetMemColumn(unsigned char start, unsigned char end) {
+  sendcommand(0b00100001);   
+  sendcommand(start);   
+  sendcommand(end);   
+}
+
+void OakOLED::SetMemPage(unsigned char start, unsigned char end) {
+  sendcommand(0b00100010);   
+  sendcommand(start);   
+  sendcommand(end);   
+}
+
+void OakOLED::SetMemStartPage(unsigned char start) {
+  sendcommand(0b10110000 | start);   
+}
+
+void OakOLED::SetMemLowStartAddr(unsigned char start) {
+  sendcommand(0b00000000 | start);   
+}
+
+void OakOLED::SetMemHighStartAddr(unsigned char start) {
+  sendcommand(0b00010000 | start);   
+}
+
+void OakOLED::CommandPromPr(String str)
+{
+    fillRect(0,cmd_line_num,OLED_WIDTH,8,0);
+    setCursor(0,cmd_line_num);
+    print(str);
+    display();
+    OffsetY(cmd_line_num);
+    if(cmd_line_num==0)
+      cmd_line_num=OLED_HEIGHT;
+    cmd_line_num=cmd_line_num-8;
+}
+
+void OakOLED::CommandPromReset()
+{
+    fillScreen(0);
+    setCursor(0,0);
+    OffsetY(0);
+    display();
+    cmd_line_num=OLED_HEIGHT-8;
 }
 
 void OakOLED::invertDisplay(bool i)
@@ -55,6 +109,7 @@ void OakOLED::invertDisplay(bool i)
 }
 
 void OakOLED::display() {
+#ifndef NO_BUFF
   sendcommand(SSD1306_COLUMNADDR);
   sendcommand(0); // start at column == 0
   sendcommand(OLED_WIDTH - 1); // end at column == 127
@@ -74,6 +129,7 @@ void OakOLED::display() {
 
     Wire.endTransmission();
   }
+#endif
 }
 
 void OakOLED::begin() {

@@ -46,6 +46,10 @@
 #define SSD1306_PAGEADDR   0x22
 #define SSD1306_SETCONTRAST 0x81
 
+#define VER  0b00000001
+#define HOR  0b00000000
+#define PAGE 0b00000010
+
 class OakOLED : public Adafruit_GFX {
   public:
 
@@ -55,6 +59,10 @@ class OakOLED : public Adafruit_GFX {
 
   void display();
 
+  void CommandPromPr(String);
+  
+  void CommandPromReset();
+  
   void begin();
 
   void resetDisplay(void);
@@ -85,13 +93,23 @@ class OakOLED : public Adafruit_GFX {
   
   void sendcommand(unsigned char com);
 
+#ifndef NO_BUFF
   uint8_t buffer[OLED_BUFFER_SIZE];
+#endif
+
+  unsigned char cmd_line_num=OLED_HEIGHT-8;
 
   private:
 
   //==========================================================//
   // Inits oled and draws logo at startup
   void init_OLED(void);
+  void SetMemColumn(unsigned char, unsigned char);
+  void SetMemPage(unsigned char, unsigned char);
+  void SetMemStartPage(unsigned char);
+  void SetMemHighStartAddr(unsigned char);
+  void SetMemLowStartAddr(unsigned char);
+  void SetMemMode(unsigned char);
 
 };
 
