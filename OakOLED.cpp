@@ -36,20 +36,48 @@
 OakOLED::OakOLED()
   : Adafruit_GFX(OLED_WIDTH, OLED_HEIGHT) {
   memset(buffer, OLED_BUFFER_SIZE, 0);
+#ifdef FAST_WRITE
+  memset(buffer_diff, 0, sizeof(buffer_diff[0][0]) * ((OLED_HEIGHT/8) * (OLED_WIDTH+1)));
+  memset(buffer_diff, 1, sizeof(buffer_diff[0][0]) * ((OLED_HEIGHT/8) * (OLED_WIDTH+1)));
+#endif
 }
 
 void OakOLED::drawPixel(int16_t x, int16_t y, uint16_t c) {
-#ifdef NO_BUFF
-
-#else
+  if(x > OLED_WIDTH-2 || y > OLED_HEIGHT-2)
+	return;
   uint16_t idx = x + (y / 8) * OLED_WIDTH;
   uint8_t bit = y % 8;
 
-  if(c) {
+#ifdef FAST_WRITE
+  bool old_st = (buffer[idx] >> bit) & 1u;
+#endif  
+  if(c == 2)
+	  buffer[idx] |= ((!bool((buffer[idx] >> bit) & 1u)) << bit);
+  else if(c) {
     buffer[idx] |= (1 << bit);
   } else {
     buffer[idx] &= ~(1 << bit);
   }
+  
+#ifdef FAST_WRITE
+if(old_st != bool(c)) {
+  if(y > 0 && y <= 8)
+	  buffer_diff[0][x]=1;
+  else if(y > 8 && y <= 16)
+	  buffer_diff[1][x]=1;
+  else if(y > 16 && y <= 24)
+	  buffer_diff[2][x]=1;
+  else if(y > 24 && y <= 32)
+	  buffer_diff[3][x]=1;
+  else if(y > 32 && y <= 40)
+	  buffer_diff[4][x]=1;
+  else if(y > 40 && y <= 48)
+	  buffer_diff[5][x]=1;
+  else if(y > 48 && y <= 56)
+	  buffer_diff[6][x]=1;
+  else if(y > 56 && y <= 64)
+	  buffer_diff[7][x]=1;
+}
 #endif
 }
 
@@ -74,13 +102,14 @@ void OakOLED::SetMemStartPage(unsigned char start) {
   sendcommand(0b10110000 | start);   
 }
 
-void OakOLED::SetMemLowStartAddr(unsigned char start) {
-  sendcommand(0b00000000 | start);   
+void OakOLED::SetMemStartAddr(unsigned char start) {
+  sendcommand(0b00000000 | start & 0x0F);   
+  sendcommand(0b00010000 | ((start & 0xF0) >> 4));   
 }
 
-void OakOLED::SetMemHighStartAddr(unsigned char start) {
-  sendcommand(0b00010000 | start);   
-}
+//void OakOLED::SetMemHighStartAddr(unsigned char start) {
+//  sendcommand(0b00010000 | start);   
+//}
 
 void OakOLED::CommandPromPr(String str)
 {
@@ -109,7 +138,39 @@ void OakOLED::invertDisplay(bool i)
 }
 
 void OakOLED::display() {
-#ifndef NO_BUFF
+#ifdef FAST_WRITE
+  unsigned char i=0;
+  for(unsigned char ii = 0; ii < OLED_HEIGHT/8; ii++)
+  {
+	  for(unsigned char jj = 0; jj < OLED_WIDTH; jj++)
+	  {
+		  if(buffer_diff[ii][jj] == 1)
+		  {
+			SetMemStartPage(ii); //Y
+			SetMemStartAddr(jj); //X
+			Wire.beginTransmission(OLED_address);
+			Wire.write(0b01000000);
+			for(i =0; ; i++)	
+			{
+			  buffer_diff[ii][jj] == 0;
+			  Wire.write(buffer[(ii*OLED_WIDTH) + jj]);
+			  if(buffer_diff[ii][jj+1] != 1 || i == 30 || jj == OLED_WIDTH-1)
+				  break;
+			  jj++;
+			}
+			Wire.endTransmission();
+			//Serial.println("x="+String(jj,DEC)+"y="+String(ii,DEC));
+			//delay(20);
+		  }
+	  }
+  }
+  
+  #if defined(ESP8266)
+  yield();
+  #endif
+
+  //SetMemMode(HORI);
+#else
   sendcommand(SSD1306_COLUMNADDR);
   sendcommand(0); // start at column == 0
   sendcommand(OLED_WIDTH - 1); // end at column == 127
@@ -118,11 +179,13 @@ void OakOLED::display() {
   sendcommand(0); // start at page == 0
   sendcommand(7); // end at page == 7
 
+  #if defined(ESP8266)
+  yield();
+  #endif
   // we can go by 16s
   for(uint16_t ii = 0; ii < OLED_BUFFER_SIZE; ii+=16) {
     Wire.beginTransmission(OLED_address);
     Wire.write(0x40);
-
     for(uint16_t jj = 0; jj < 16; ++jj) {
       Wire.write(buffer[ii + jj]);
     }
@@ -134,6 +197,7 @@ void OakOLED::display() {
 
 void OakOLED::begin() {
   Wire.begin();
+  Wire.setClock(SSD1306_CLOCK);
   init_OLED();
   resetDisplay();
   clearDisplay();
@@ -193,6 +257,13 @@ void OakOLED::Mirror(bool st) {
 	sendcommand(0b10100000 | st);
 }
 
+void OakOLED::fillScreen(uint16_t color) {
+  memset(buffer, bool(color), OLED_BUFFER_SIZE);
+#ifdef FAST_WRITE
+  memset(buffer_diff, 1, sizeof(buffer_diff[0][0]) * ((OLED_HEIGHT/8) * OLED_WIDTH));
+#endif
+}
+
 //==========================================================//
 // Resets display depending on the actual mode.
 void OakOLED::resetDisplay(void)
@@ -221,6 +292,9 @@ void OakOLED::displayOff(void)
 void OakOLED::clearDisplay(void)
 {
   memset(buffer, 0, OLED_BUFFER_SIZE);
+#ifdef FAST_WRITE
+  memset(buffer_diff, 1, sizeof(buffer_diff[0][0]) * ((OLED_HEIGHT/8) * (OLED_WIDTH+1)));
+#endif
 }
 
 //==========================================================//
@@ -281,8 +355,13 @@ void OakOLED::init_OLED(void)
   //----------------------------REVERSE comments----------------------------//
   // sendcommand(0xa7);  //Set Inverse Display
   // sendcommand(0xae);   //display off
-  sendcommand(0x20);            //Set Memory Addressing Mode
-  sendcommand(0x00);            //Set Memory Addressing Mode ab Horizontal addressing mode
+#ifdef FAST_WRITE
+  SetMemMode(PAGE);
+#else
+  SetMemMode(HORI);
+#endif
+  //sendcommand(0x20);            //Set Memory Addressing Mode
+  //sendcommand(0x00);            //Set Memory Addressing Mode ab Horizontal addressing mode
   //  sendcommand(0x02);         // Set Memory Addressing Mode ab Page addressing mode(RESET)
 
   sendcommand(SSD1306_SETCONTRAST);

@@ -40,14 +40,16 @@
 #define OLED_address  0x3c
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
+#define SSD1306_CLOCK 2800000L
+#define FAST_WRITE
 #define OLED_BUFFER_SIZE (OLED_WIDTH * OLED_HEIGHT / 8)
 
 #define SSD1306_COLUMNADDR 0x21
 #define SSD1306_PAGEADDR   0x22
 #define SSD1306_SETCONTRAST 0x81
 
-#define VER  0b00000001
-#define HOR  0b00000000
+#define VERT 0b00000001
+#define HORI 0b00000000
 #define PAGE 0b00000010
 
 class OakOLED : public Adafruit_GFX {
@@ -56,6 +58,7 @@ class OakOLED : public Adafruit_GFX {
   OakOLED();
   virtual void drawPixel(int16_t, int16_t, uint16_t);
   virtual void invertDisplay(bool);
+  virtual void fillScreen(uint16_t);
 
   void display();
 
@@ -93,12 +96,12 @@ class OakOLED : public Adafruit_GFX {
   
   void sendcommand(unsigned char com);
 
-#ifndef NO_BUFF
   uint8_t buffer[OLED_BUFFER_SIZE];
+#ifdef FAST_WRITE
+  bool buffer_diff[OLED_HEIGHT/8][OLED_WIDTH+1];
 #endif
-
   unsigned char cmd_line_num=OLED_HEIGHT-8;
-
+  
   private:
 
   //==========================================================//
@@ -107,8 +110,7 @@ class OakOLED : public Adafruit_GFX {
   void SetMemColumn(unsigned char, unsigned char);
   void SetMemPage(unsigned char, unsigned char);
   void SetMemStartPage(unsigned char);
-  void SetMemHighStartAddr(unsigned char);
-  void SetMemLowStartAddr(unsigned char);
+  void SetMemStartAddr(unsigned char);
   void SetMemMode(unsigned char);
 
 };
